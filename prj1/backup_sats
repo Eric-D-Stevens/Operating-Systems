@@ -1,0 +1,183 @@
+#!/bin/bash
+trap "rm final.$$ tempin.$$ temp1.$$ TMP1.$$ -f" kill exit 
+
+#USAGE CHECK
+if [ "$#" -eq "2" ]; then
+	filename=$2
+elif [ "$#" -eq "1" ]; then
+	cat <&0 > tempin.$$
+	filename=tempin.$$
+else
+	echo "Usage: stats {-rows|-cols} [file]" 1>&2
+	exit 1
+fi
+
+
+#File Existance Check
+if [[ -f "$filename" ]]; then
+	:
+else
+	echo "File "$filename" does not exist" 1>&2
+	exit 1
+fi
+
+#File Empty Check
+if [[ -s "$filename" ]]; then
+	:
+else
+	echo "File "$filename" is an empty file" 1>&2
+	exit 1
+fi
+
+#Failure to read file check
+if [[ -r "$filename" ]]; then
+	:
+else
+	echo "Failure to read file "$filename"" 1>&2
+	exit 1
+fi
+
+
+#filename=$2
+sum=0
+numOfRows=0
+numOfCols=0
+TMP1=./TMP1.$$
+rORc=1;
+iterations=0
+
+
+
+
+function sizes {
+filename=$1
+rows=$(wc -l $filename | cut -f1 -d' ')
+cols=$(wc -w $filename | cut -f1 -d' ') 
+cols=$(expr "$cols" / "$rows")
+numOfRows=$rows
+numOfCols=$cols
+}
+
+
+#START COLUMN FUNCTION#
+#######################
+function colCalc {
+sum=0
+filename=$1
+col=$2
+medLoc=$(expr "$3" / 2 + 1)
+
+#SUM THE COLUMN
+cut -f "$col"  $filename > $TMP1
+while read num
+do
+	sum=$(expr "$sum" + "$num")
+done < $TMP1
+
+#FIND MEDIAN
+sort -g TMP1.$$ > sorted.$$
+med=$(head -"$medLoc" sorted.$$ | tail -1)
+rm sorted.$$ -f
+
+#FIND MEAN
+mean=$(expr $sum / $3)
+xtmp=$(expr $sum \* 10)
+xtmp=$(expr $xtmp / $3)
+xtmp=$(expr $xtmp % 10)
+if [ "$xtmp" -ge 5 ]; then
+	mean=$(expr "$mean" + 1)
+fi
+
+#PRINT TO FILE
+echo "$mean	$med" >> ./final.$$
+
+}
+
+
+#START ROW FUNCTION
+###################
+function rowCalc {
+sum=0
+filename=$1
+row=$2
+medLoc=$(expr "$3" / 2 + 1)
+
+#SUM THE ROW
+head -"$row" $filename | tail -1 > temp1.$$
+tr "\t" "\n" < temp1.$$ > $TMP1 
+while read num
+do
+	sum=$(expr "$sum" + "$num")
+done < $TMP1
+#FIND MEDIAN
+sort -g TMP1.$$ > sorted.$$
+med=$(head -"$medLoc" sorted.$$ | tail -1)
+rm sorted.$$ -f
+
+#FIND MEAN
+mean=$(expr $sum / $3)
+xtmp=$(expr $sum \* 10)
+xtmp=$(expr $xtmp / $3)
+xtmp=$(expr $xtmp % 10)
+if [ "$xtmp" -ge 5 ]; then
+	mean=$(expr "$mean" + 1)
+fi
+
+#PRINT TO FILE
+echo "$mean	$med" >> final.$$ 
+
+}
+
+#START LOOPING FUNCTION#
+########################
+
+function colLoop {
+filename=$1
+
+COUNTER=1
+while [ $COUNTER -le $iterations ]; do
+	if [ "$rORc" = 1 ]; then
+		colCalc "$filename" "$COUNTER" "$numOfRows"
+	else
+		rowCalc "$filename" "$COUNTER" "$numOfCols"
+	fi
+	wait
+	COUNTER=$(expr "$COUNTER" + 1)
+done
+
+if [ "$rORc" = 1 ]; then
+	echo Averages:
+	cut -f1 final.$$ | tr "\n" "\t"
+	echo 
+	echo Medians:
+	cut -f2 final.$$ | tr "\n" "\t"
+	echo
+else
+	echo Average	Median
+	cat final.$$
+fi
+}
+
+
+
+
+
+
+
+
+
+sizes $filename
+if [[ "$1" == -r* ]]; then
+	rORc=0
+	iterations=$numOfRows
+elif [[ "$1" == -c* ]]; then
+	rORc=1 
+	iterations=$numOfCols
+else
+	echo "Usage: stats {-rows|-cols} [file]" 1>&2
+	exit 1
+fi
+
+
+colLoop $filename 
+rm final.$$ tempin.$$ temp1.$$ TMP1.$$  -f

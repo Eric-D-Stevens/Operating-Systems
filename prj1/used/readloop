@@ -1,0 +1,6 @@
+#!/bin/bash
+
+fuck = $fuck
+read $1 > fuck 
+echo $fuck 
+

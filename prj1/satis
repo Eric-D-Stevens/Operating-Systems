@@ -1,0 +1,191 @@
+#!/bin/bash
+
+
+
+# Trap kills and exits to eleiminate unwanted temp files
+trap "rm final.$$ tempin.$$ temp1.$$ TMP1.$$ -f" kill exit 
+
+#Check input setup
+if [ "$#" -eq "2" ]; then # Normal usage with file name
+	filename=$2
+elif [ "$#" -eq "1" ]; then # Single argument
+	cat <&0 > tempin.$$ # sent STDIN to temp file
+	filename=tempin.$$  # set STDIN temp file as input file
+else	#Any other situation is a usage error
+	echo "Usage: stats {-rows|-cols} [file]" 1>&2
+	exit 1
+fi
+
+
+#File Existance Check
+if [[ -f "$filename" ]]; then
+	:
+else
+	echo "File "$filename" does not exist" 1>&2
+	exit 1
+fi
+
+#File Empty Check
+if [[ -s "$filename" ]]; then
+	:
+else
+	echo "File "$filename" is an empty file" 1>&2
+	exit 1
+fi
+
+#Failure to read file check
+if [[ -r "$filename" ]]; then
+	:
+else
+	echo "Failure to read file "$filename"" 1>&2
+	exit 1
+fi
+
+#Global variable declaration
+sum=0 #used in mean loops
+numOfRows=0 # used as iterator
+numOfCols=0 # used as iterator
+TMP1=./TMP1.$$ # temp file for array modification
+rORc=1; #determines solving rows = 0 or columns = 1
+iterations=0
+
+
+
+# Calculate matrix size and set number of rows and columns
+function sizes {
+filename=$1
+rows=$(wc -l $filename | cut -f1 -d' ') # get number of lines
+cols=$(wc -w $filename | cut -f1 -d' ') # get number of words
+cols=$(expr "$cols" / "$rows")	# divide words/lines
+numOfRows=$rows #set global value
+numOfCols=$cols	#set global value
+}
+
+
+#START COLUMN FUNCTION#
+#######################
+# this function extracts a single column and calculates the mean and meadian
+# Arguments 1: filename 2: which column 3: number of rows
+function colCalc {
+sum=0
+filename=$1
+col=$2
+medLoc=$(expr "$3" / 2 + 1) # calculation of median location after sort
+
+#SUM THE COLUMN: Loop that adds all values in column and stores them to sum
+cut -f "$col"  $filename > $TMP1
+while read num
+do
+	sum=$(expr "$sum" + "$num")
+done < $TMP1
+
+#FIND MEDIAN: sorts column, gets value at location calculad earlier
+sort -g TMP1.$$ > sorted.$$ #generate temp file for sorted column
+med=$(head -"$medLoc" sorted.$$ | tail -1) #extract value
+rm sorted.$$ -f # remove temp file
+
+#FIND MEAN: Uses sum value and divides by number of rows
+mean=$(expr $sum / $3) # store floor mean
+xtmp=$(expr $sum \* 10) # multiply sum by 10
+xtmp=$(expr $xtmp / $3) # divide 10*sum by rows
+xtmp=$(expr $xtmp % 10) # modulous 10
+if [ "$xtmp" -ge 5 ]; then # if 5 or greater round up 
+	mean=$(expr "$mean" + 1) 
+fi
+
+#PRINT TO FILE: temp file used for final output
+echo "$mean	$med" >> ./final.$$
+
+}
+
+
+#START ROW FUNCTION
+###################i
+# this function extracts a single row, transposes into a column, and
+# then preforms the exact same operations as above.
+# Arguments: 1: filename 2: which row 3: number of columns
+function rowCalc {
+sum=0
+filename=$1
+row=$2
+medLoc=$(expr "$3" / 2 + 1) # calc median location after sort
+
+#SUM THE ROW
+head -"$row" $filename | tail -1 > temp1.$$ # extract row
+tr "\t" "\n" < temp1.$$ > $TMP1 # transpose and store to temp file
+while read num #sum values in the column
+do
+	sum=$(expr "$sum" + "$num")
+done < $TMP1
+#FIND MEDIAN
+sort -g TMP1.$$ > sorted.$$ # sort and place in temp file
+med=$(head -"$medLoc" sorted.$$ | tail -1) #get median value from temp
+rm sorted.$$ -f # remove temp file
+
+#FIND MEAN: exact operation as for the columns 
+mean=$(expr $sum / $3)
+xtmp=$(expr $sum \* 10)
+xtmp=$(expr $xtmp / $3)
+xtmp=$(expr $xtmp % 10)
+if [ "$xtmp" -ge 5 ]; then
+	mean=$(expr "$mean" + 1)
+fi
+
+#PRINT TO FILE
+echo "$mean	$med" >> final.$$ 
+
+}
+
+#START LOOPING FUNCTION#
+########################
+# This function is in charge of looping the previous functions over the 
+# entier matrix to obtain values for each row. It also responsible for 
+# the formatting of the output.
+# Arguments: 1: filename 2: 
+function colLoop {
+filename=$1
+
+COUNTER=1
+while [ $COUNTER -le $iterations ]; do # iterations is global, set outside
+	if [ "$rORc" = 1 ]; then # if user is request columns
+		colCalc "$filename" "$COUNTER" "$numOfRows"
+	else # if user is requesting rows
+		rowCalc "$filename" "$COUNTER" "$numOfCols"
+	fi
+	wait
+	COUNTER=$(expr "$COUNTER" + 1) # increment counter
+done
+# Output Formatting
+if [ "$rORc" = 1 ]; then # if the user requested column 
+	echo Averages:
+	cut -f1 final.$$ | tr "\n" "\t"
+	echo 
+	echo Medians:
+	cut -f2 final.$$ | tr "\n" "\t"
+	echo
+else # if the user requested rows
+	echo Average	Median
+	cat final.$$
+fi
+}
+
+
+
+# Main Part of Program #
+########################
+sizes $filename # Gets numbers of rows and columns and sets globals
+if [[ "$1" == -r* ]]; then # checks for user row request
+	rORc=0 # user selects rows
+	iterations=$numOfRows # set number of iterations
+elif [[ "$1" == -c* ]]; then # checks for column request
+	rORc=1 # sets column request
+	iterations=$numOfCols # sets iterator value
+else # if no format is fit send usage error
+	echo "Usage: stats {-rows|-cols} [file]" 1>&2
+	exit 1
+fi
+
+#SETUP COMPLETE
+
+colLoop $filename # CALL FUNCTION FOR FULL OPERATION
+rm final.$$ tempin.$$ temp1.$$ TMP1.$$  -f # remove temps before close

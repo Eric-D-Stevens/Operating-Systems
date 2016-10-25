@@ -1,0 +1,14 @@
+#!/bin/bash
+
+sum=0
+TMP1=./TMP1
+echo -e "11\n34\n5\n23\n234523\n23425\n2345235232\n234" > $TMP1
+
+while read num
+do
+	echo "start"
+	echo "num: $num"
+	sum=$(expr "$sum" + "$num")
+	echo "sum: $sum"
+	echo -e "end\n"
+done < $TMP1

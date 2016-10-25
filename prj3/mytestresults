@@ -1,0 +1,103 @@
+Pre-script Info
+PID: 31398
+
+BEGINNING TEST SCRIPT - MAX 150 POINTS (10 more points for comments)
+
+
+--------------------
+ls (10 points for returning dir contents)
+hello
+junk
+Makefile
+mytestresults
+p3testscript
+shell
+shell.c
+smallsh
+smallsh.c
+yyy
+
+
+--------------------
+ls out junk
+
+
+--------------------
+cat junk (20 points for correctly returning contents of junk)
+hello
+junk
+Makefile
+mytestresults
+p3testscript
+shell
+shell.c
+smallsh
+smallsh.c
+yyy
+
+
+--------------------
+wc in junk (20 points for returning correct numbers from wc)
+10 10 83
+
+
+--------------------
+test -f badfile (10 points for returning error value of 1)
+: : : : : : : : : : : : : : : : : : : : : : : : : : : : exit value: 1
+
+
+--------------------
+wc in badfile (10 points for returning text error)
+failure to open badfile for reaing
+: : : : : : : : : : 
+
+--------------------
+badfile (10 points for returning text error)
+badfile: no such file or directory
+: : : : : : : : : : 
+
+--------------------
+sleep 100 background (10 points for returning process ID of sleeper)
+: : : : : background pid is 31441
+
+
+--------------------
+pkill -signal SIGTERM sleep (10 points for pid of killed process, 10 points for signal)
+(Ignore message about Operation Not Permitted)
+pkill: 31393 - Operation not permitted
+pkill: 31397 - Operation not permitted
+: : : : : : background pid 31441 is done: terminated by signal 15
+
+
+--------------------
+sleep 1 background (10 pts for pid of bg ps when done, 10 for exit value)
+: : : : : background pid is 31452
+
+: : background pid 31452 is done: exit value 0
+
+--------------------
+pwd
+/nfs/stak/students/s/steveric/cs344/prj3
+
+
+--------------------
+cd
+
+
+--------------------
+pwd (10 points for being in the HOME dir)
+/nfs/stak/students/s/steveric
+
+
+--------------------
+mkdir testdir31398
+
+
+--------------------
+cd testdir31398
+
+
+--------------------
+pwd (10 points for being in the newly created dir)
+/nfs/stak/students/s/steveric/testdir31398
+: : : : : : : : : : : : : : : : : : : : : : : : : : : : : : 

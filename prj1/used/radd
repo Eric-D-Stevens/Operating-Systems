@@ -1,0 +1,16 @@
+#!/bin/bash
+
+rvar=$1
+
+sum=0
+TMP1=./TMP1
+
+head -"$rvar" test_file | tail -1 > temp1
+tr "\t" "\n" < temp1 > $TMP1 
+
+
+while read num
+do
+	sum=$(expr "$sum" + "$num")
+	echo "$num	$sum"
+done < $TMP1
